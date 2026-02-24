@@ -1,6 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+let aiInstance: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY || "";
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
 
 export const generateIslamicResponse = async (prompt: string, mode: 'simple' | 'detailed' | 'scholar' = 'detailed') => {
   const systemInstructions = {
@@ -10,6 +18,7 @@ export const generateIslamicResponse = async (prompt: string, mode: 'simple' | '
   };
 
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
