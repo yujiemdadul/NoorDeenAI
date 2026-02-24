@@ -222,6 +222,14 @@ const HadithSection = () => {
   );
 };
 
+const formatTime12h = (time24: string) => {
+  if (!time24) return "";
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
 const PrayerSection = () => {
   const [timings, setTimings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -283,15 +291,15 @@ const PrayerSection = () => {
   }
 
   const prayerList = [
-    { name: 'ফজর', time: timings?.Fajr },
-    { name: 'যোহর', time: timings?.Dhuhr },
-    { name: 'আসর', time: timings?.Asr },
-    { name: 'মাগরিব', time: timings?.Maghrib },
-    { name: 'এশা', time: timings?.Isha },
+    { name: 'ফজর', time: formatTime12h(timings?.Fajr) },
+    { name: 'যোহর', time: formatTime12h(timings?.Dhuhr) },
+    { name: 'আসর', time: formatTime12h(timings?.Asr) },
+    { name: 'মাগরিব', time: formatTime12h(timings?.Maghrib) },
+    { name: 'এশা', time: formatTime12h(timings?.Isha) },
   ];
 
-  const sehriTime = timings?.Imsak || timings?.Fajr;
-  const iftarTime = timings?.Maghrib;
+  const sehriTime = formatTime12h(timings?.Imsak || timings?.Fajr);
+  const iftarTime = formatTime12h(timings?.Maghrib);
 
   return (
     <div className="p-6 space-y-6">
