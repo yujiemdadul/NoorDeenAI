@@ -692,9 +692,12 @@ const SettingsSection = ({ isRamadan, setIsRamadan }: { isRamadan: boolean, setI
         </div>
       </div>
 
-      <div className="text-center pt-4">
+      <div className="text-center pt-4 space-y-1">
         <p className="text-[10px] text-slate-600">NoorDeen AI v1.0.0</p>
         <p className="text-[10px] text-slate-600">Crafted with ❤️ for the Ummah</p>
+        <p className="text-[10px] text-slate-500">
+          Developed by <a href="https://uchihaemdadul.bio.link/" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Uchiha Emdadul</a>
+        </p>
       </div>
     </div>
   );
