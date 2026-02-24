@@ -5,7 +5,6 @@ import {
   Clock, 
   LayoutGrid, 
   Settings, 
-  Send, 
   Moon, 
   Sun, 
   Compass, 
@@ -22,20 +21,17 @@ import {
   Languages
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import Markdown from 'react-markdown';
 import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
-import { generateIslamicResponse } from './services/geminiService';
 import { cn } from './utils';
 
 // --- Types ---
-type Tab = 'chat' | 'quran' | 'prayer' | 'tools' | 'quiz' | 'settings';
+type Tab = 'hadith' | 'quran' | 'prayer' | 'tools' | 'quiz' | 'settings';
 
-interface Message {
-  id: string;
+interface Hadith {
+  id: number;
   text: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
+  narrator: string;
+  source: string;
 }
 
 interface Surah {
@@ -61,31 +57,96 @@ const MOCK_SURAHS: Surah[] = [
   { id: 114, name: 'আন-নাস', englishName: 'An-Nas', ayahs: 6, type: 'Meccan' },
 ];
 
-const SUGGESTED_QUESTIONS = [
-  "নামাজের গুরুত্ব কী?",
-  "রমজানের ফজিলত কী?",
-  "তাহাজ্জুদ নামাজের নিয়ম কী?",
-  "ইসলামে দান-সদকার গুরুত্ব।"
+const MOCK_HADITHS: Hadith[] = [
+  { id: 1, text: "সকল কাজ নিয়তের ওপর নির্ভরশীল।", narrator: "হযরত ওমর ইবনুল খাত্তাব (রা.)", source: "সহীহ বুখারী" },
+  { id: 2, text: "তোমাদের মধ্যে সেই ব্যক্তিই সর্বোত্তম যে কুরআন শেখে এবং অন্যকে শেখায়।", narrator: "হযরত ওসমান (রা.)", source: "সহীহ বুখারী" },
+  { id: 3, text: "পবিত্রতা ঈমানের অর্ধেক।", narrator: "হযরত আবু মালেক আল-আশআরী (রা.)", source: "সহীহ মুসলিম" },
+  { id: 4, text: "যে ব্যক্তি মানুষের প্রতি দয়া করে না, আল্লাহ তার প্রতি দয়া করেন না।", narrator: "হযরত জারীর ইবনে আবদুল্লাহ (রা.)", source: "সহীহ বুখারী" },
+  { id: 5, text: "প্রকৃত মুসলিম সেই ব্যক্তি যার জিহ্বা ও হাত থেকে অন্য মুসলিম নিরাপদ থাকে।", narrator: "হযরত আবদুল্লাহ ইবনে আমর (রা.)", source: "সহীহ বুখারী" },
+  { id: 6, text: "তোমাদের মধ্যে সেই ব্যক্তিই উত্তম যার চরিত্র সবচেয়ে সুন্দর।", narrator: "হযরত আবদুল্লাহ ইবনে আমর (রা.)", source: "সহীহ বুখারী" },
+  { id: 7, text: "মজলুমের বদদোয়া থেকে বেঁচে থাকো।", narrator: "হযরত মুয়াজ ইবনে জাবাল (রা.)", source: "সহীহ বুখারী" },
+  { id: 8, text: "লজ্জা ঈমানের একটি শাখা।", narrator: "হযরত আবু হুরায়রা (রা.)", source: "সহীহ বুখারী" },
+  { id: 9, text: "আল্লাহর কাছে সবচেয়ে প্রিয় আমল হলো সময়মতো নামাজ পড়া।", narrator: "হযরত আবদুল্লাহ ইবনে মাসউদ (রা.)", source: "সহীহ বুখারী" },
+  { id: 10, text: "যে ব্যক্তি আল্লাহর সন্তুষ্টির জন্য জ্ঞান অর্জন করে, আল্লাহ তার জন্য জান্নাতের পথ সহজ করে দেন।", narrator: "হযরত আবু হুরায়রা (রা.)", source: "সহীহ মুসলিম" },
+  { id: 11, text: "তোমরা সহজ করো, কঠিন করো না; সুসংবাদ দাও, বিতৃষ্ণা সৃষ্টি করো না।", narrator: "হযরত আনাস (রা.)", source: "সহীহ বুখারী" },
+  { id: 12, text: "নিশ্চয়ই আল্লাহ তোমাদের চেহারা ও সম্পদের দিকে তাকান না, বরং তিনি তোমাদের অন্তর ও আমলের দিকে তাকান।", narrator: "হযরত আবু হুরায়রা (রা.)", source: "সহীহ মুসলিম" },
+  { id: 13, text: "এক মুসলিম অন্য মুসলিমের ভাই।", narrator: "হযরত আবদুল্লাহ ইবনে ওমর (রা.)", source: "সহীহ বুখারী" },
+  { id: 14, text: "যে ব্যক্তি আমানত রক্ষা করে না, তার ঈমান নেই।", narrator: "হযরত আনাস (রা.)", source: "বায়হাকী" },
+  { id: 15, text: "তোমরা জাহান্নামের আগুন থেকে বাঁচো, একটি খেজুরের টুকরো দিয়ে হলেও।", narrator: "হযরত আদি ইবনে হাতিম (রা.)", source: "সহীহ বুখারী" },
+  { id: 16, text: "যে ব্যক্তি বড়দের সম্মান করে না এবং ছোটদের স্নেহ করে না, সে আমাদের অন্তর্ভুক্ত নয়।", narrator: "হযরত আবদুল্লাহ ইবনে আমর (রা.)", source: "তিরমিযী" },
+  { id: 17, text: "মুমিন একই গর্ত থেকে দুইবার দংশিত হয় না।", narrator: "হযরত আবু হুরায়রা (রা.)", source: "সহীহ বুখারী" },
+  { id: 18, text: "আল্লাহর কাছে সবচেয়ে প্রিয় জায়গা হলো মসজিদ।", narrator: "হযরত আবু হুরায়রা (রা.)", source: "সহীহ মুসলিম" },
+  { id: 19, text: "যে ব্যক্তি জুমার দিন সূরা কাহাফ পড়বে, তার জন্য দুই জুমার মধ্যবর্তী সময় নূর চমকাতে থাকবে।", narrator: "হযরত আবু সাঈদ খুদরী (রা.)", source: "নাসাঈ" },
+  { id: 20, text: "তোমরা হিংসা থেকে বেঁচে থাকো, কারণ হিংসা নেক আমলগুলোকে খেয়ে ফেলে যেমন আগুন কাঠকে খেয়ে ফেলে।", narrator: "হযরত আবু হুরায়রা (রা.)", source: "আবু দাউদ" }
+];
+
+const TASBIH_LIST = [
+  { id: 1, name: 'সুবহানাল্লাহ', target: 33, meaning: 'আল্লাহ অতি পবিত্র' },
+  { id: 2, name: 'আলহামদুলিল্লাহ', target: 33, meaning: 'সকল প্রশংসা আল্লাহর' },
+  { id: 3, name: 'আল্লাহু আকবার', target: 34, meaning: 'আল্লাহ সর্বশ্রেষ্ঠ' },
+  { id: 4, name: 'লা ইলাহা ইল্লাল্লাহ', target: 100, meaning: 'আল্লাহ ছাড়া কোনো উপাস্য নেই' },
+  { id: 5, name: 'আস্তাগফিরুল্লাহ', target: 100, meaning: 'আমি আল্লাহর কাছে ক্ষমা চাই' },
 ];
 
 const QUIZ_QUESTIONS = [
-  {
-    question: "ইসলামের প্রথম খলিফা কে ছিলেন?",
-    options: ["হযরত ওমর (রা.)", "হযরত আবু বকর (রা.)", "হযরত ওসমান (রা.)", "হযরত আলী (রা.)"],
-    correct: 1
-  },
-  {
-    question: "পবিত্র কুরআনের সবচেয়ে বড় সূরা কোনটি?",
-    options: ["সূরা ফাতিহা", "সূরা বাকারা", "সূরা ইয়াসিন", "সূরা ইখলাস"],
-    correct: 1
-  }
+  { question: "ইসলামের প্রথম খলিফা কে ছিলেন?", options: ["হযরত ওমর (রা.)", "হযরত আবু বকর (রা.)", "হযরত ওসমান (রা.)", "হযরত আলী (রা.)"], correct: 1 },
+  { question: "পবিত্র কুরআনের সবচেয়ে বড় সূরা কোনটি?", options: ["সূরা ফাতিহা", "সূরা বাকারা", "সূরা ইয়াসিন", "সূরা ইখলাস"], correct: 1 },
+  { question: "ইসলামের স্তম্ভ কয়টি?", options: ["৩টি", "৪টি", "৫টি", "৬টি"], correct: 2 },
+  { question: "কুরআনের মোট সূরা সংখ্যা কত?", options: ["১১০টি", "১১২টি", "১১৪টি", "১১৬টি"], correct: 2 },
+  { question: "সর্বশেষ নবীর নাম কী?", options: ["হযরত ঈসা (আ.)", "হযরত মুসা (আ.)", "হযরত মুহাম্মদ (সা.)", "হযরত ইব্রাহিম (আ.)"], correct: 2 },
+  { question: "জান্নাতের চাবি কী?", options: ["রোজা", "হজ", "নামাজ", "যাকাত"], correct: 2 },
+  { question: "পবিত্র কুরআনের প্রথম অবতীর্ণ শব্দ কোনটি?", options: ["ইকরা", "বিসমিল্লাহ", "আলহামদুলিল্লাহ", "আল্লাহ"], correct: 0 },
+  { question: "হজ পালনের মাস কোনটি?", options: ["রমজান", "শাওয়াল", "জিলহজ", "মহরম"], correct: 2 },
+  { question: "যাকাত ইসলামের কততম স্তম্ভ?", options: ["১ম", "২য়", "৩য়", "৪র্থ"], correct: 2 },
+  { question: "আল্লাহর ৯৯টি নামের মধ্যে 'আর-রাহমান' অর্থ কী?", options: ["বিচারক", "পরম দয়ালু", "সৃষ্টিকর্তা", "মালিক"], correct: 1 },
+  { question: "সবচেয়ে বেশি হাদিস বর্ণনা করেছেন কে?", options: ["হযরত আয়েশা (রা.)", "হযরত আবু হুরায়রা (রা.)", "হযরত ওমর (রা.)", "হযরত আলী (রা.)"], correct: 1 },
+  { question: "কুরআনের কোন সূরাকে কুরআনের হৃদয় বলা হয়?", options: ["সূরা বাকারা", "সূরা ইয়াসিন", "সূরা আর-রাহমান", "সূরা মুলক"], correct: 1 },
+  { question: "বদর যুদ্ধ কত হিজরিতে হয়েছিল?", options: ["১ হিজরি", "২ হিজরি", "৩ হিজরি", "৪ হিজরি"], correct: 1 },
+  { question: "ফেরেশতাদের সর্দার কে?", options: ["হযরত জিবরাঈল (আ.)", "হযরত মিকাঈল (আ.)", "হযরত ইসরাফিল (আ.)", "হযরত আজরাঈল (আ.)"], correct: 0 },
+  { question: "কুরআনের কোন সূরা বিসমিল্লাহ ছাড়া শুরু হয়েছে?", options: ["সূরা তওবা", "সূরা নামল", "সূরা কাহাফ", "সূরা ফিল"], correct: 0 },
+  { question: "হযরত মুহাম্মদ (সা.) এর পিতার নাম কী?", options: ["আবদুল মুত্তালিব", "আবদুল্লাহ", "আবু তালিব", "হামজা"], correct: 1 },
+  { question: "মক্কায় কত বছর কুরআন অবতীর্ণ হয়?", options: ["১০ বছর", "১২ বছর", "১৩ বছর", "১৫ বছর"], correct: 2 },
+  { question: "মদিনায় কত বছর কুরআন অবতীর্ণ হয়?", options: ["৮ বছর", "১০ বছর", "১২ বছর", "১৩ বছর"], correct: 1 },
+  { question: "প্রথম মুয়াজ্জিন কে ছিলেন?", options: ["হযরত আবু বকর (রা.)", "হযরত বিলাল (রা.)", "হযরত সালমান ফারসি (রা.)", "হযরত আম্মার (রা.)"], correct: 1 },
+  { question: "কুরআনের কোন সূরাকে 'উম্মুল কুরআন' বলা হয়?", options: ["সূরা ফাতিহা", "সূরা বাকারা", "সূরা ইখলাস", "সূরা নাস"], correct: 0 },
+  { question: "ইসলামের দ্বিতীয় খলিফা কে ছিলেন?", options: ["হযরত ওসমান (রা.)", "হযরত ওমর (রা.)", "হযরত আলী (রা.)", "হযরত আবু বকর (রা.)"], correct: 1 },
+  { question: "হযরত মুহাম্মদ (সা.) কত বছর বয়সে নবুওয়াত লাভ করেন?", options: ["৩৫ বছর", "৪০ বছর", "৪৫ বছর", "৫০ বছর"], correct: 1 },
+  { question: "কুরআনের ক্ষুদ্রতম সূরা কোনটি?", options: ["সূরা ইখলাস", "সূরা নাস", "সূরা কাউসার", "সূরা আসর"], correct: 2 },
+  { question: "যাকাত ফরজ হওয়ার জন্য সম্পদের পরিমাণকে কী বলা হয়?", options: ["সদকা", "নিসাব", "ফিতরা", "উশর"], correct: 1 },
+  { question: "আশুরা কোন মাসে পালিত হয়?", options: ["রমজান", "মহরম", "সফর", "রজব"], correct: 1 },
+  { question: "হযরত মুহাম্মদ (সা.) এর মাতার নাম কী?", options: ["হালিমা", "আমিনা", "খাদিজা", "ফাতিমা"], correct: 1 },
+  { question: "কুরআনের কোন সূরায় দুইবার বিসমিল্লাহ আছে?", options: ["সূরা তওবা", "সূরা নামল", "সূরা বাকারা", "সূরা ইয়াসিন"], correct: 1 },
+  { question: "তসবিহ পাঠের গুরুত্ব কোন ইবাদতের অংশ?", options: ["যিকির", "রোজা", "হজ", "যাকাত"], correct: 0 },
+  { question: "ইসলামের তৃতীয় খলিফা কে ছিলেন?", options: ["হযরত আলী (রা.)", "হযরত ওসমান (রা.)", "হযরত ওমর (রা.)", "হযরত আবু বকর (রা.)"], correct: 1 },
+  { question: "ইসলামের চতুর্থ খলিফা কে ছিলেন?", options: ["হযরত ওমর (রা.)", "হযরত ওসমান (রা.)", "হযরত আলী (রা.)", "হযরত আবু বকর (রা.)"], correct: 2 },
+  { question: "হযরত মুহাম্মদ (সা.) এর প্রথম স্ত্রীর নাম কী?", options: ["হযরত আয়েশা (রা.)", "হযরত খাদিজা (রা.)", "হযরত হাফসা (রা.)", "হযরত জয়নব (রা.)"], correct: 1 },
+  { question: "কুরআনের কোন সূরাটি তিনবার পড়লে এক খতম কুরআনের সওয়াব পাওয়া যায়?", options: ["সূরা ফাতিহা", "সূরা ইখলাস", "সূরা ইয়াসিন", "সূরা মুলক"], correct: 1 },
+  { question: "হযরত মুহাম্মদ (সা.) কোন বংশে জন্মগ্রহণ করেন?", options: ["কুরাইশ", "হাশেমী", "উমাইয়া", "আউস"], correct: 0 },
+  { question: "মিরাজ কোন রাতে হয়েছিল?", options: ["২৭শে রজব", "১৫ই শাবান", "২৭শে রমজান", "১০ই মহরম"], correct: 0 },
+  { question: "কুরআনের কতটি সূরা মক্কায় অবতীর্ণ হয়েছে?", options: ["৮০টি", "৮৬টি", "৯২টি", "৯৬টি"], correct: 1 },
+  { question: "কুরআনের কতটি সূরা মদিনায় অবতীর্ণ হয়েছে?", options: ["২২টি", "২৪টি", "২৮টি", "৩০টি"], correct: 2 },
+  { question: "হযরত মুহাম্মদ (সা.) এর দুধমাতার নাম কী?", options: ["আমিনা", "হালিমা", "সুয়াইবা", "ফাতিমা"], correct: 1 },
+  { question: "কুরআনের কোন নবীর নাম সবচেয়ে বেশি এসেছে?", options: ["হযরত মুহাম্মদ (সা.)", "হযরত ইব্রাহিম (আ.)", "হযরত মুসা (আ.)", "হযরত ঈসা (আ.)"], correct: 2 },
+  { question: "জান্নাতের সর্দারনী কে?", options: ["হযরত আয়েশা (রা.)", "হযরত ফাতিমা (রা.)", "হযরত খাদিজা (রা.)", "হযরত মরিয়ম (আ.)"], correct: 1 },
+  { question: "জান্নাতের রক্ষী ফেরেশতার নাম কী?", options: ["মালিক", "রিজওয়ান", "জিবরাঈল", "মিকাঈল"], correct: 1 },
+  { question: "জাহান্নামের রক্ষী ফেরেশতার নাম কী?", options: ["রিজওয়ান", "মালিক", "আজরাঈল", "ইসরাফিল"], correct: 1 },
+  { question: "হযরত মুহাম্মদ (সা.) এর প্রিয় রং কী ছিল?", options: ["লাল", "নীল", "সবুজ", "সাদা"], correct: 3 },
+  { question: "কুরআনের কোন সূরাকে 'কুরআনের সৌন্দর্য' বলা হয়?", options: ["সূরা আর-রাহমান", "সূরা ইয়াসিন", "সূরা মুলক", "সূরা ওয়াকিয়াহ"], correct: 0 },
+  { question: "কুরআনের কোন সূরা পাঠ করলে কবরের আজাব থেকে মুক্তি পাওয়া যায়?", options: ["সূরা ইয়াসিন", "সূরা মুলক", "সূরা কাহাফ", "সূরা ওয়াকিয়াহ"], correct: 1 },
+  { question: "হযরত মুহাম্মদ (সা.) কত হিজরিতে মক্কা বিজয় করেন?", options: ["৬ হিজরি", "৭ হিজরি", "৮ হিজরি", "৯ হিজরি"], correct: 2 },
+  { question: "ইসলামের প্রথম যুদ্ধের নাম কী?", options: ["উহুদ যুদ্ধ", "খন্দক যুদ্ধ", "বদর যুদ্ধ", "খায়বার যুদ্ধ"], correct: 2 },
+  { question: "হযরত মুহাম্মদ (সা.) এর তরবারির নাম কী ছিল?", options: ["জুলফিকার", "আল-বাতর", "যুলফিকার", "মাছুর"], correct: 2 },
+  { question: "কুরআনের কোন সূরায় মশার কথা উল্লেখ আছে?", options: ["সূরা বাকারা", "সূরা আনকাবুত", "সূরা ফিল", "সূরা নামল"], correct: 0 },
+  { question: "কুরআনের কোন সূরায় মৌমাছির কথা উল্লেখ আছে?", options: ["সূরা নামল", "সূরা নাহল", "সূরা বাকারা", "সূরা ফিল"], correct: 1 },
+  { question: "কুরআনের কোন সূরায় পিপীলিকার কথা উল্লেখ আছে?", options: ["সূরা নাহল", "সূরা নামল", "সূরা আনকাবুত", "সূরা ফিল"], correct: 1 },
+  { question: "হযরত মুহাম্মদ (সা.) এর ইন্তেকাল কত হিজরিতে হয়?", options: ["১০ হিজরি", "১১ হিজরি", "১২ হিজরি", "১৩ হিজরি"], correct: 1 }
 ];
 
 // --- Components ---
 
 const Navbar = ({ activeTab, setActiveTab }: { activeTab: Tab, setActiveTab: (t: Tab) => void }) => {
   const tabs = [
-    { id: 'chat', icon: MessageSquare, label: 'চ্যাট' },
+    { id: 'hadith', icon: MessageSquare, label: 'হাদীস' },
     { id: 'quran', icon: BookOpen, label: 'কুরআন' },
     { id: 'prayer', icon: Clock, label: 'নামাজ' },
     { id: 'tools', icon: LayoutGrid, label: 'টুলস' },
@@ -117,127 +178,45 @@ const Navbar = ({ activeTab, setActiveTab }: { activeTab: Tab, setActiveTab: (t:
   );
 };
 
-const ChatSection = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: 'আসসালামু আলাইকুম! আমি নূরদীন এআই। আমি আপনাকে কীভাবে সাহায্য করতে পারি?', sender: 'ai', timestamp: new Date() }
-  ]);
-  const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [mode, setMode] = useState<'simple' | 'detailed' | 'scholar'>('detailed');
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
-
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: input,
-      sender: 'user',
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setIsTyping(true);
-
-    const response = await generateIslamicResponse(input, mode);
-    
-    const aiMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      text: response,
-      sender: 'ai',
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, aiMsg]);
-    setIsTyping(false);
-  };
-
+const HadithSection = () => {
+  const [search, setSearch] = useState('');
+  
   return (
-    <div className="flex flex-col h-full pb-24">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            key={msg.id}
-            className={cn(
-              "flex flex-col max-w-[85%]",
-              msg.sender === 'user' ? "ml-auto items-end" : "mr-auto items-start"
-            )}
-          >
-            <div className={cn(
-              "p-4 rounded-2xl text-sm leading-relaxed",
-              msg.sender === 'user' 
-                ? "gold-gradient text-emerald-950 font-medium shadow-lg" 
-                : "glass border-gold/20 shadow-emerald-950/50"
-            )}>
-              <div className="markdown-body">
-                <Markdown>{msg.text}</Markdown>
-              </div>
-            </div>
-            <span className="text-[10px] text-slate-500 mt-1 px-1">
-              {format(msg.timestamp, 'p')}
-            </span>
-          </motion.div>
-        ))}
-        {isTyping && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="glass border-gold/20 p-4 rounded-2xl mr-auto flex gap-1"
-          >
-            <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-gold rounded-full" />
-            <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 bg-gold rounded-full" />
-            <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-gold rounded-full" />
-          </motion.div>
-        )}
-        <div ref={scrollRef} />
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-3 glass p-3 rounded-2xl border-white/10">
+        <Search size={18} className="text-slate-500" />
+        <input 
+          type="text" 
+          placeholder="হাদীস খুঁজুন..." 
+          className="bg-transparent border-none outline-none text-sm flex-1"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      <div className="p-4 space-y-3">
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {SUGGESTED_QUESTIONS.map((q) => (
-            <button
-              key={q}
-              onClick={() => setInput(q)}
-              className="whitespace-nowrap px-4 py-2 rounded-full glass text-xs text-slate-300 hover:text-gold hover:border-gold/30 transition-all"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 glass p-2 rounded-2xl border-white/10">
-          <select 
-            value={mode} 
-            onChange={(e) => setMode(e.target.value as any)}
-            className="bg-transparent text-[10px] text-gold font-bold outline-none px-2 border-r border-white/10"
+      <div className="space-y-4">
+        {MOCK_HADITHS.filter(h => h.text.includes(search) || h.narrator.includes(search)).map((hadith) => (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            key={hadith.id} 
+            className="glass p-6 rounded-3xl space-y-4 relative overflow-hidden group"
           >
-            <option value="simple">সহজ</option>
-            <option value="detailed">বিস্তারিত</option>
-            <option value="scholar">স্কলার</option>
-          </select>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="আপনার প্রশ্ন লিখুন..."
-            className="flex-1 bg-transparent border-none outline-none text-sm px-2 placeholder:text-slate-500"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isTyping}
-            className="p-2 gold-gradient rounded-xl text-emerald-950 shadow-lg disabled:opacity-50 transition-all active:scale-90"
-          >
-            <Send size={18} />
-          </button>
-        </div>
+            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Sparkles size={40} />
+            </div>
+            <p className="text-slate-200 leading-relaxed italic">"{hadith.text}"</p>
+            <div className="pt-4 border-t border-white/5 flex justify-between items-end">
+              <div>
+                <p className="text-xs font-bold text-gold">{hadith.narrator}</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest">{hadith.source}</p>
+              </div>
+              <button className="p-2 glass rounded-xl text-slate-400 hover:text-gold transition-colors">
+                <Bookmark size={14} />
+              </button>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   );
@@ -500,26 +479,67 @@ const QuranSection = () => {
 };
 
 const ToolsSection = ({ setActiveTab }: { setActiveTab: (t: Tab) => void }) => {
-  const [tasbih, setTasbih] = useState(0);
+  const [tasbihIdx, setTasbihIdx] = useState(0);
+  const [count, setCount] = useState(0);
   
+  const currentTasbih = TASBIH_LIST[tasbihIdx];
+
+  const handleIncrement = () => {
+    if (count + 1 >= currentTasbih.target) {
+      if (tasbihIdx < TASBIH_LIST.length - 1) {
+        setTasbihIdx(prev => prev + 1);
+        setCount(0);
+      } else {
+        setCount(currentTasbih.target);
+      }
+    } else {
+      setCount(prev => prev + 1);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="grid grid-cols-2 gap-4">
-        <div className="glass p-6 rounded-3xl text-center space-y-4">
-          <p className="text-xs text-slate-400 uppercase tracking-widest">তসবিহ</p>
-          <div className="text-4xl font-bold text-gold">{tasbih}</div>
-          <button 
-            onClick={() => setTasbih(prev => prev + 1)}
-            className="w-full py-3 gold-gradient rounded-2xl text-emerald-950 font-bold shadow-lg active:scale-95 transition-all"
-          >
-            সুবহানাল্লাহ
-          </button>
-          <button 
-            onClick={() => setTasbih(0)}
-            className="text-[10px] text-slate-500 flex items-center justify-center gap-1 mx-auto hover:text-slate-300"
-          >
-            <RotateCcw size={10} /> রিসেট
-          </button>
+        <div className="glass p-6 rounded-3xl text-center space-y-4 flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">তসবিহ</p>
+            <h5 className="text-xs font-bold text-gold truncate">{currentTasbih.name}</h5>
+            <p className="text-[8px] text-slate-500 italic mt-1">{currentTasbih.meaning}</p>
+          </div>
+          
+          <div className="relative py-4">
+            <div className="text-4xl font-bold text-gold">{count}</div>
+            <div className="text-[10px] text-slate-500">লক্ষ্য: {currentTasbih.target}</div>
+          </div>
+
+          <div className="space-y-2">
+            <button 
+              onClick={handleIncrement}
+              className="w-full py-3 gold-gradient rounded-2xl text-emerald-950 font-bold shadow-lg active:scale-95 transition-all text-sm"
+            >
+              পাঠ করুন
+            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  setCount(0);
+                  setTasbihIdx(0);
+                }}
+                className="flex-1 py-1 glass rounded-lg text-[8px] text-slate-500 flex items-center justify-center gap-1 hover:text-slate-300"
+              >
+                <RotateCcw size={8} /> রিসেট
+              </button>
+              <button 
+                onClick={() => {
+                  setTasbihIdx((prev) => (prev + 1) % TASBIH_LIST.length);
+                  setCount(0);
+                }}
+                className="flex-1 py-1 glass rounded-lg text-[8px] text-slate-500 flex items-center justify-center gap-1 hover:text-slate-300"
+              >
+                পরবর্তী
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -717,24 +737,24 @@ const SettingsSection = ({ isRamadan, setIsRamadan }: { isRamadan: boolean, setI
 // --- Main App ---
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('chat');
+  const [activeTab, setActiveTab] = useState<Tab>('hadith');
   const [isRamadan, setIsRamadan] = useState(false);
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'chat': return <ChatSection />;
+      case 'hadith': return <HadithSection />;
       case 'prayer': return <PrayerSection />;
       case 'quran': return <QuranSection />;
       case 'tools': return <ToolsSection setActiveTab={setActiveTab} />;
       case 'quiz': return <QuizSection />;
       case 'settings': return <SettingsSection isRamadan={isRamadan} setIsRamadan={setIsRamadan} />;
-      default: return <ChatSection />;
+      default: return <HadithSection />;
     }
   };
 
   const getTitle = () => {
     switch (activeTab) {
-      case 'chat': return 'নূরদীন এআই';
+      case 'hadith': return 'আল-হাদীস';
       case 'prayer': return 'নামাজের সময়';
       case 'quran': return 'আল-কুরআন';
       case 'tools': return 'ইসলামিক টুলস';
