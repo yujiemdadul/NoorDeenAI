@@ -223,13 +223,75 @@ const HadithSection = () => {
 };
 
 const PrayerSection = () => {
-  const prayers = [
-    { name: 'ফজর', bagerhat: '০৫:০৮', dhaka: '০৫:১০', next: false },
-    { name: 'যোহর', bagerhat: '১২:১৩', dhaka: '১২:১৫', next: true },
-    { name: 'আসর', bagerhat: '০৪:২৮', dhaka: '০৪:৩০', next: false },
-    { name: 'মাগরিব', bagerhat: '০৬:০৩', dhaka: '০৬:০৫', next: false },
-    { name: 'এশা', bagerhat: '০৭:২৮', dhaka: '০৭:৩০', next: false },
+  const [timings, setTimings] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [location, setLocation] = useState('Dhaka');
+
+  useEffect(() => {
+    const fetchPrayers = async () => {
+      try {
+        // Try to get user location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${latitude}&longitude=${longitude}&method=1`);
+            const data = await res.json();
+            if (data.data) {
+              setTimings(data.data.timings);
+              setLocation('আপনার অবস্থান');
+            }
+            setLoading(false);
+          }, async () => {
+            // Fallback to Dhaka
+            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Dhaka&country=Bangladesh&method=1`);
+            const data = await res.json();
+            if (data.data) {
+              setTimings(data.data.timings);
+              setLocation('ঢাকা');
+            }
+            setLoading(false);
+          });
+        } else {
+          const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Dhaka&country=Bangladesh&method=1`);
+          const data = await res.json();
+          if (data.data) {
+            setTimings(data.data.timings);
+            setLocation('ঢাকা');
+          }
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching prayer times:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchPrayers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-10 text-center space-y-4">
+        <motion.div 
+          animate={{ rotate: 360 }} 
+          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+          className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full mx-auto"
+        />
+        <p className="text-slate-400 text-sm">নামাজের সময় লোড হচ্ছে...</p>
+      </div>
+    );
+  }
+
+  const prayerList = [
+    { name: 'ফজর', time: timings?.Fajr },
+    { name: 'যোহর', time: timings?.Dhuhr },
+    { name: 'আসর', time: timings?.Asr },
+    { name: 'মাগরিব', time: timings?.Maghrib },
+    { name: 'এশা', time: timings?.Isha },
   ];
+
+  const sehriTime = timings?.Imsak || timings?.Fajr;
+  const iftarTime = timings?.Maghrib;
 
   return (
     <div className="p-6 space-y-6">
@@ -237,13 +299,16 @@ const PrayerSection = () => {
         <div className="absolute top-0 right-0 p-4 opacity-10">
           <Clock size={100} />
         </div>
-        <h3 className="text-gold text-sm font-bold tracking-widest uppercase mb-2">পরবর্তী নামাজ</h3>
-        <h2 className="text-4xl font-bold mb-1">যোহর</h2>
-        <p className="text-slate-400 text-sm mb-4">বাকি আছে: ০২ ঘণ্টা ১৫ মিনিট</p>
-        <div className="flex justify-center gap-4">
-          <div className="glass px-4 py-2 rounded-xl text-[10px] flex items-center gap-2">
-            <Compass size={12} className="text-gold" />
-            <span>বাগেরহাট ও ঢাকা</span>
+        <h3 className="text-gold text-[10px] font-bold tracking-widest uppercase mb-2">আজকের সময় ({location})</h3>
+        
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="glass p-3 rounded-2xl border-gold/20 flex flex-col items-center justify-center">
+            <p className="text-[8px] text-slate-400 uppercase mb-1">সেহরি (শেষ সময়)</p>
+            <p className="text-lg font-bold text-gold">{sehriTime}</p>
+          </div>
+          <div className="glass p-3 rounded-2xl border-gold/20 flex flex-col items-center justify-center">
+            <p className="text-[8px] text-slate-400 uppercase mb-1">ইফতার (সময়)</p>
+            <p className="text-lg font-bold text-gold">{iftarTime}</p>
           </div>
         </div>
       </div>
@@ -251,35 +316,19 @@ const PrayerSection = () => {
       <div className="space-y-3">
         <div className="flex justify-between px-4 text-[10px] text-slate-500 uppercase tracking-widest font-bold">
           <span>নামাজ</span>
-          <div className="flex items-center gap-6 mr-8">
-            <span className="w-12 text-right">বাগেরহাট</span>
-            <span className="w-12 text-right">ঢাকা</span>
-          </div>
+          <span>সময়</span>
         </div>
-        {prayers.map((p) => (
+        {prayerList.map((p) => (
           <div 
             key={p.name}
-            className={cn(
-              "flex items-center justify-between p-4 rounded-2xl transition-all",
-              p.next ? "glass-gold border-gold/40 scale-[1.02]" : "glass"
-            )}
+            className="glass flex items-center justify-between p-4 rounded-2xl transition-all hover:border-gold/30"
           >
             <div className="flex items-center gap-3">
-              <div className={cn(
-                "w-2 h-2 rounded-full",
-                p.next ? "bg-gold animate-pulse" : "bg-slate-600"
-              )} />
-              <span className={cn("font-medium", p.next ? "text-gold" : "text-slate-200")}>
-                {p.name}
-              </span>
+              <div className="w-2 h-2 rounded-full bg-gold" />
+              <span className="font-medium text-slate-200">{p.name}</span>
             </div>
-            <div className="flex items-center gap-6">
-              <span className={cn("w-12 text-right text-xs font-mono", p.next ? "text-gold" : "text-slate-300")}>
-                {p.bagerhat}
-              </span>
-              <span className="w-12 text-right text-xs font-mono text-slate-500">
-                {p.dhaka}
-              </span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-mono text-gold">{p.time}</span>
               <button className="w-6 h-6 rounded-md border border-white/10 flex items-center justify-center hover:border-gold/50 transition-colors">
                 <CheckCircle2 size={14} className="text-slate-600 hover:text-gold" />
               </button>
