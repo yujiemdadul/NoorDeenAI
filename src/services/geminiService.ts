@@ -5,6 +5,11 @@ let aiInstance: GoogleGenAI | null = null;
 const getAI = () => {
   if (!aiInstance) {
     const apiKey = process.env.GEMINI_API_KEY || "";
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY is missing in the environment.");
+    } else {
+      console.log("Gemini API Key found (length: " + apiKey.length + ")");
+    }
     aiInstance = new GoogleGenAI({ apiKey });
   }
   return aiInstance;
@@ -19,6 +24,7 @@ export const generateIslamicResponse = async (prompt: string, mode: 'simple' | '
 
   try {
     const ai = getAI();
+    // Using gemini-3-flash-preview as per guidelines
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
@@ -27,9 +33,14 @@ export const generateIslamicResponse = async (prompt: string, mode: 'simple' | '
       },
     });
 
-    return response.text || "দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।";
+    if (!response || !response.text) {
+      console.error("Empty response from Gemini", response);
+      return "দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।";
+    }
+
+    return response.text;
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "একটি ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।";
+    return "একটি ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন। (Error: " + (error instanceof Error ? error.message : "Unknown") + ")";
   }
 };

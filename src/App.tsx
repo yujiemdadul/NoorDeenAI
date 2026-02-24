@@ -499,7 +499,7 @@ const QuranSection = () => {
   );
 };
 
-const ToolsSection = () => {
+const ToolsSection = ({ setActiveTab }: { setActiveTab: (t: Tab) => void }) => {
   const [tasbih, setTasbih] = useState(0);
   
   return (
@@ -522,10 +522,21 @@ const ToolsSection = () => {
           </button>
         </div>
 
-        <div className="glass p-6 rounded-3xl flex flex-col items-center justify-center space-y-2">
-          <Compass size={40} className="text-gold animate-pulse" />
-          <p className="text-xs font-medium">কিবলা কম্পাস</p>
-          <p className="text-[10px] text-slate-500">২৯৫° উত্তর-পশ্চিম</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex-1 glass p-6 rounded-3xl flex flex-col items-center justify-center space-y-2">
+            <Compass size={40} className="text-gold animate-pulse" />
+            <p className="text-xs font-medium">কিবলা কম্পাস</p>
+            <p className="text-[10px] text-slate-500">২৯৫° উত্তর-পশ্চিম</p>
+          </div>
+          
+          <button 
+            onClick={() => setActiveTab('quiz')}
+            className="flex-1 glass p-6 rounded-3xl flex flex-col items-center justify-center space-y-2 hover:border-gold/30 transition-all group"
+          >
+            <Trophy size={40} className="text-gold group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-medium">ইসলামিক কুইজ</p>
+            <p className="text-[10px] text-slate-500">আপনার জ্ঞান যাচাই করুন</p>
+          </button>
         </div>
       </div>
 
@@ -714,7 +725,7 @@ export default function App() {
       case 'chat': return <ChatSection />;
       case 'prayer': return <PrayerSection />;
       case 'quran': return <QuranSection />;
-      case 'tools': return <ToolsSection />;
+      case 'tools': return <ToolsSection setActiveTab={setActiveTab} />;
       case 'quiz': return <QuizSection />;
       case 'settings': return <SettingsSection isRamadan={isRamadan} setIsRamadan={setIsRamadan} />;
       default: return <ChatSection />;
