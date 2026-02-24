@@ -1,0 +1,5 @@
+{
+  "name": "NoorDeen AI",
+  "description": "A premium Islamic AI companion with prayer times, Quran, and more.",
+  "requestFramePermissions": ["geolocation"]
+}

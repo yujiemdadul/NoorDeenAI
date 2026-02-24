@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700&family=Amiri:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "Amiri", serif;
+  --color-emerald-950: #022c22;
+  --color-gold: #d4af37;
+  --color-gold-light: #f9e79f;
+}
+
+@layer base {
+  body {
+    @apply bg-emerald-950 text-slate-100 selection:bg-gold/30;
+    background-image: 
+      radial-gradient(circle at 0% 0%, rgba(20, 184, 166, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.1) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+.glass {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
+}
+
+.glass-gold {
+  @apply bg-gold/5 backdrop-blur-xl border border-gold/20 shadow-2xl;
+}
+
+.islamic-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l5.878 18.09h19.022l-15.39 11.18 5.878 18.09-15.389-11.18-15.39 11.18 5.878-18.09-15.39-11.18h19.022L30 0z' fill='%23d4af37' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #d4af37 0%, #f9e79f 50%, #d4af37 100%);
+}
+
+.gold-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-gold via-gold-light to-gold;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+}
+
+.markdown-body p {
+  @apply mb-4 leading-relaxed;
+}
+
+.markdown-body ul, .markdown-body ol {
+  @apply mb-4 ml-6 list-disc;
+}
+
+.ramadan-theme {
+  --color-emerald-950: #1a0f00;
+  --color-gold: #ff9d00;
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(255, 157, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(255, 157, 0, 0.05) 0%, transparent 50%);
+}
+
+.ramadan-theme .gold-gradient {
+  background: linear-gradient(135deg, #ff9d00 0%, #ffcc00 50%, #ff9d00 100%);
+}
+
+.ramadan-theme .gold-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-400;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
